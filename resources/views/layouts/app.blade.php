@@ -185,7 +185,7 @@
                                 <div class="dropdown-menu dropdown-menu-right" aria-labelledby="navbarDropdown">
                                     <a class="dropdown-item" href="{{ route('logout') }}"
                                         onclick="event.preventDefault();
-                                                                                        document.getElementById('logout-form').submit();">
+                                                                                                                        document.getElementById('logout-form').submit();">
                                         {{ __('Logout') }}
                                     </a>
 
@@ -204,6 +204,8 @@
             @yield('content')
         </main>
     </div>
+
+    <script src="https://js.pusher.com/7.0/pusher.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script>
         var receiver_id = '';
@@ -216,10 +218,41 @@
                 }
             });
 
-            $('.user').click(function() {
+            // Enable pusher logging - don't include this in production
+            Pusher.logToConsole = true;
+
+            var pusher = new Pusher('8a6ed70f4f38892c42bf', {
+                cluster: 'ap1',
+                forceTLS: true
+            });
+
+            var channel = pusher.subscribe('my-channel');
+            channel.bind('my-event', function(data) {
+                // alert(JSON.stringify(data));
+                if (my_id == data.from) {
+                    // alert('sender');
+                    $('#' + data.to).click();
+                } else if (my_id == data.to) {
+                    if (receiver_id == data.from) {
+                        // if receiver id selected, reload the selected user
+                        $('#' + data.from).click();
+                    } else {
+                        // add notification 
+                        var pending = parseInt($('#' + data.from).find('.pending').html());
+                        if (pending) {
+                            $('#' + data.from).find('.pending').html(pending + 1);
+                        } else {
+                            $('#' + data.from).append('<span class="pending">1</span>');
+                        }
+                    }
+                }
+            });
+
+            $('.user').click(function () {
                 $('.user').removeClass('active');
                 $(this).addClass('active');
-                
+                $(this).find('.pending').remove();
+
                 receiver_id = $(this).attr('id');
                 $.ajax({
                     type: "get",
@@ -228,6 +261,7 @@
                     cache: false,
                     success: function(data) {
                         $('#messages').html(data);
+                        scrollToBottomFunc();
                     }
                 });
             });
@@ -244,16 +278,22 @@
                         url: 'message', // need to create this post route
                         data: datastr,
                         cache: false,
-                        success: function(data) {
-                        },
-                        error: function(jqXHR, status, err) {
-                        },
+                        success: function(data) {},
+                        error: function(jqXHR, status, err) {},
                         complete: function() {
+                            scrollToBottomFunc();
                         }
                     });
                 }
             });
         });
+
+        // make a function to scroll down auto
+        function scrollToBottomFunc() {
+            $('.message-wrapper').animate({
+                scrollTop: $('.message-wrapper').get(0).scrollHeight
+            }, 50);
+        }
 
     </script>
 </body>
